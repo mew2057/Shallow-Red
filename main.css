@@ -10,12 +10,25 @@ body
     background-color: #333;
 }
 
-#board
+#boardContainer
 {
     position: relative;
     margin: auto;
+    width: 500px;
+    height: 498px;
+    background-image: url('images/board-outline.png');
+}
+
+#board
+{
+    position: absolute;
+    left: 38px;
+    top: 37px;
     width: 424px;
     height: 424px;
+    
+    /* Remove this to get a more realistic looking board. 
+       Harder to see the pieces though, I think. */
     background-image: url('images/board.png');
 }
 
@@ -39,6 +52,7 @@ body
 .bn
 {
     background-image: url('images/bn.png');
+    z-index: 10;
 }
 
 .bb
@@ -69,6 +83,7 @@ body
 .wn
 {
     background-image: url('images/wn.png');
+    z-index: 10;
 }
 
 .wb
