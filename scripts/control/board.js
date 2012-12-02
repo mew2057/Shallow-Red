@@ -38,22 +38,21 @@ Board.test = function()
     var color = 0;
     
     // This is just me testing out your test to check that my move generation works.
-    for(var limit = 100; limit > 0; limit --)
+    for(var limit = 20; limit > 0; limit --)
     {
-        c = minimaxSearch(c, color,4);
+        c = minimaxSearch(c, color,3);
         
         if(c === null)
             break;
        // c = moves[Math.floor(Math.random()*moves.length)];
-        console.log(c.move,ChessNode.utility(c, color));
+        console.log("Chosen Move: ", c.move,ChessNode.utility(c, color));
 
         color = (color +1)%2;
         Board.showState(c);
         
       //  moves = null;
-
-
     }
+    return c;
     /*
     var a = ChessNode.moveKnight(c, 0, 1);
     c = a[0];

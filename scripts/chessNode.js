@@ -433,6 +433,7 @@ ChessNode.moveKing = function(state, rank, file)
  */
 ChessNode.utility = function(node, color, print)
 {
+    // There's a bug somwhere in here...
     var utilityValue = 0;
     
     for(var rank = 0; rank < node.boardState.length; rank ++)
@@ -464,13 +465,16 @@ ChessNode.rowUtility = function(rank, color,print)
         if(currentCell !== 0)
         {
             rowValue += (((currentCell & 8) >> 3) == color ? 1 : -1) * 
-                            ChessNode.getMaterialValue(currentCell);                            
+                            ChessNode.getMaterialValue(currentCell);      
+            if(print)
+                console.log("       Cell",(((currentCell & 8) >> 3) == color ? 1 : -1) * DEFAULT_WEIGHT[PIECES[currentCell & 7]], file, currentCell & 7);
+
         }
     }
     
     if(print)
     {
-        console.log(rowValue);
+        console.log("   Row", rowValue);
     }
     
     return rowValue;
@@ -483,7 +487,6 @@ ChessNode.rowUtility = function(rank, color,print)
  */
 ChessNode.getMaterialValue = function(cell)
 {
-    
     // Mid game begins at 10 moves
     // End game begins when one side has about 2 power pieces (maybe 3)
     // TODO make this more variable.
