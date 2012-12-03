@@ -40,7 +40,7 @@ Board.test = function()
     // This is just me testing out your test to check that my move generation works.
     for(var limit = 20; limit > 0; limit --)
     {
-        c = minimaxSearch(c, color,3);
+        c = minimaxSearch(c, color,4);
         
         if(c === null)
             break;

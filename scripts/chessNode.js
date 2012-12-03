@@ -39,8 +39,8 @@ function ChessNode()
        A   B   C   D   E   F   G   H
     */
     this.boardState = [593839922, 286331153, 0, 0, 0, 0, 2576980377, 2885537466];
-    this.moveCount   = 0;
     this.move   = "";
+    this.moveCount = 0;
     
     
     // *### *-color #-piece
@@ -62,7 +62,9 @@ ChessNode.copy = function(state)
     
     for (var i = 0; i < state.boardState.length; i++)
         copy.boardState[i] = state.boardState[i];
-        
+    
+    copy.moveCount = state;
+    
     return copy;
 };
 
@@ -422,6 +424,23 @@ ChessNode.moveKing = function(state, rank, file)
     return finalStates;
 };
 
+ChessNode.simpleUtility = function(state)
+{
+    var utilityValue = 0;
+    var piece;
+    
+    for (var rank = 0; rank < state.boardState.length; rank++)
+    {
+        for (var file = 0; file < state.boardState.length; file++)
+        {
+            piece = ChessNode.mask(state.boardState[rank], file);
+            utilityValue += (piece & 8 ? -1 : 1) * DEFAULT_WEIGHT[PIECES[piece & 7]];
+        }
+    }
+    
+    return utilityValue;    
+};
+
 /**
  * The evaluation function for the "correctness" of a board combination.
  * At the time of writing performs a material advantage calculation for the supplied color.
@@ -431,9 +450,8 @@ ChessNode.moveKing = function(state, rank, file)
  *                  0: black, 1:white.
  * @retrun The utility value for the particular board configuration.
  */
-ChessNode.utility = function(node, color, print)
+ChessNode.utility = function(node, color)
 {
-    // There's a bug somwhere in here...
     var utilityValue = 0;
     
     for(var rank = 0; rank < node.boardState.length; rank ++)
@@ -441,10 +459,10 @@ ChessNode.utility = function(node, color, print)
         if(node.boardState[rank] !== 0)
         {
             // calculate util on a row by row basis
-            utilityValue += ChessNode.rowUtility(node.boardState[rank], color, print);
+            utilityValue += ChessNode.rowUtility(node.boardState[rank], color);
         }
     }
-    
+
     return utilityValue;    
 };
 
@@ -455,9 +473,10 @@ ChessNode.utility = function(node, color, print)
  *                  0: black, 1:white.
  * @return The utility value of the rank.
  */
-ChessNode.rowUtility = function(rank, color,print)
+ChessNode.rowUtility = function(rank, color)
 {
     var currentCell = 0, rowValue = 0;
+    
     
     for(var file = 0; file < 8; file++)
     {
@@ -465,19 +484,17 @@ ChessNode.rowUtility = function(rank, color,print)
         if(currentCell !== 0)
         {
             rowValue += (((currentCell & 8) >> 3) == color ? 1 : -1) * 
-                            ChessNode.getMaterialValue(currentCell);      
-            if(print)
-                console.log("       Cell",(((currentCell & 8) >> 3) == color ? 1 : -1) * DEFAULT_WEIGHT[PIECES[currentCell & 7]], file, currentCell & 7);
-
+                            ChessNode.getMaterialValue(currentCell, file);      
         }
     }
     
-    if(print)
-    {
-        console.log("   Row", rowValue);
-    }
-    
     return rowValue;
+};
+
+
+ChessNode.getStateMobility = function(state)
+{
+    
 };
 
 /**
@@ -485,12 +502,28 @@ ChessNode.rowUtility = function(rank, color,print)
  * @param cell The cell to attempt to discern a utility value for.
  * @return The material weight of the piece.
  */
-ChessNode.getMaterialValue = function(cell)
+ChessNode.getMaterialValue = function(cell, file)
 {
-    // Mid game begins at 10 moves
-    // End game begins when one side has about 2 power pieces (maybe 3)
-    // TODO make this more variable.
-    return DEFAULT_WEIGHT[PIECES[cell & 7]];
+    var retVal = 0;
+    switch(cell & 7)
+    {
+        case PIECES.P:
+            retVal = DEFAULT_WEIGHT[PIECES.P] * (file === 3 || file === 4) ? 1 : 2;
+            break;
+            
+        case PIECES.WB:
+        case PIECES.BB:
+        case PIECES.N:
+        case PIECES.R:
+        case PIECES.Q:
+        case PIECES.K:        
+            retVal =  DEFAULT_WEIGHT[PIECES[cell & 7]];
+            break;
+        default:
+    }
+    
+    return retVal;
+    
 };
 
 /**
