@@ -1,3 +1,5 @@
+
+ChessNode.COLOR_MULTI = [1,-1];
 function ChessNode()
 {
     /*
@@ -434,7 +436,7 @@ ChessNode.simpleUtility = function(state)
         for (var file = 0; file < state.boardState.length; file++)
         {
             piece = ChessNode.mask(state.boardState[rank], file);
-            utilityValue += (piece & 8 ? -1 : 1) * DEFAULT_WEIGHT[PIECES[piece & 7]];
+            utilityValue += (piece & 8 ? 1 : -1) * DEFAULT_WEIGHT[PIECES[piece & 7]];
         }
     }
     
@@ -446,11 +448,9 @@ ChessNode.simpleUtility = function(state)
  * At the time of writing performs a material advantage calculation for the supplied color.
  * 
  * @param node A chessNode
- * @param color {0,1} The color of the player this function is created for.
- *                  0: black, 1:white.
  * @retrun The utility value for the particular board configuration.
  */
-ChessNode.utility = function(node, color)
+ChessNode.utility = function(node)
 {
     var utilityValue = 0;
     
@@ -459,7 +459,7 @@ ChessNode.utility = function(node, color)
         if(node.boardState[rank] !== 0)
         {
             // calculate util on a row by row basis
-            utilityValue += ChessNode.rowUtility(node.boardState[rank], color);
+            utilityValue += ChessNode.rowUtility(node.boardState[rank]);
         }
     }
 
@@ -469,8 +469,7 @@ ChessNode.utility = function(node, color)
 /**
  * This was implemented to cut down on cyclomatic complexityfor the utility function.
  * @param rank The variable representing a rank with cell data encoded as specified in the ChessNode notes.
- * @param color {0,1} The color of the player this function is created for.
- *                  0: black, 1:white.
+ * 
  * @return The utility value of the rank.
  */
 ChessNode.rowUtility = function(rank, color)
@@ -483,7 +482,7 @@ ChessNode.rowUtility = function(rank, color)
         currentCell = ChessNode.mask(rank, file);
         if(currentCell !== 0)
         {
-            rowValue += (((currentCell & 8) >> 3) == color ? 1 : -1) * 
+            rowValue += ChessNode.COLOR_MULTI[((currentCell & 8) >> 3)] * 
                             ChessNode.getMaterialValue(currentCell, file);      
         }
     }

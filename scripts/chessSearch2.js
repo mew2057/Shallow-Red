@@ -50,7 +50,8 @@ Search.minimaxSearch = function(state, color, depth)
     console.log(((new Date().getTime() - startTime) / 1000) + "s",
             "Best Value", Search.bestValue, "Processed:", Search.processedStates, "Good states:", goodStates.length);
     
-    return goodStates[Math.floor(Math.random() * goodStates.length)];
+   // return goodStates[Math.floor(Math.random() * goodStates.length)];
+   return goodMoves[0];
 };
 
 Search.max = function(state, alpha, beta)
