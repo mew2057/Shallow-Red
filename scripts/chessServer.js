@@ -1,35 +1,48 @@
 
 function Server() {}
 
-Server.gameId = "";
-Server.teamNumber = "";
-Server.teamSecret = "";
+Server.gameId = "22";
+Server.teamNumber = "1";
+Server.teamSecret = "32c68cae";
 Server.url = null;
 
-Server.pollingInterval = null;
+Server.pollingTimeout = null;
 Server.pollingRate = 5000;
 
 Server.init = function()
 {
-    Server.url = "http://www.bencarle.com/chess/poll/GAMEID/TEAMNUMBER/TEAMSECRET/"
+    Server.url = "http://www.bencarle.com/chess/poll/"
             + Server.gameId + "/"
             + Server.teamNumber + "/"
-            + Server.teamSearch + "/"
+            + Server.teamSecret + "/";
             
-    Server.pollingInterval = setInterval(Server.poll, Server.pollingRate);
+    //Server.pollingTimeout = setTimeout(Server.poll, Server.pollingRate);
 };
 
 Server.poll = function()
 {
     $.ajax({
-        method: "GET",
+        method : "GET",
         url : Server.url,
+        contentType : "application/json; charset=UTF-8",
         dataType : "json",
-        success : Server.pollResponse
+        //crossDomain : true,
+        success : Server.pollSuccessful,
+        failure : Server.pollFailure
     });
 };
 
-Server.pollResponse = function(response)
+Server.pollSuccessful = function(response)
 {
     console.log(response);
+};
+
+Server.pollFailure = function(response)
+{
+    console.log("Poll failed: " + Server.url);
+};
+
+Server.sendMove = function()
+{
+    
 };

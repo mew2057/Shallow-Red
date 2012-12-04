@@ -89,7 +89,7 @@ Search.max = function(state, alpha, beta)
             return value;
         }
         
-         alpha = Math.max(value, alpha);
+        alpha = Math.max(value, alpha);
     }
     
     Search.currentDepth--;

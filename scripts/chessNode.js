@@ -53,11 +53,6 @@ function ChessNode()
     // Rank 2 : 286331153
 }
 
-ChessNode.prototype.init = function()
-{
-    
-};
-
 ChessNode.copy = function(state)
 {
     var copy = new ChessNode();
@@ -68,6 +63,25 @@ ChessNode.copy = function(state)
     copy.moveCount = state;
     
     return copy;
+};
+
+ChessNode.processIncoming = function(moveString, state)
+{
+    var sourceFile = FILE_MAP[moveString.charAt(1)];
+    var sourceRank = parseInt(moveString.charAt(2), 10)-1;
+    
+    var piece = ChessNode.mask(state.boardState[sourceRank], sourceFile);
+    
+    var destFile = FILE_MAP[moveString.charAt(3)];
+    var destRank = parseInt(moveString.charAt(4), 10)-1 ;
+    
+    state.boardState[destRank] &= ~SQUARE_MASKS[destFile];
+    state.boardState[destRank] |= piece << (destFile << 2);
+    
+    
+    state.boardState[sourceRank] &= ~SQUARE_MASKS[sourceFile];   
+    
+    return state;
 };
 
 /**
@@ -105,8 +119,9 @@ ChessNode.addMove = function(moves, state, sourceRank, sourceFile, destRank, des
     copy.boardState[destRank] &= ~SQUARE_MASKS[destFile];
     copy.boardState[destRank] |= piece << (destFile << 2);
     
-    copy.move = PIECES[piece & 7] + FILE_MAP.indicies[sourceFile] + (sourceRank +1) + FILE_MAP.indicies[destFile] + (destRank +1);
-
+    copy.move = PIECES[piece & 7].charAt(0) + FILE_MAP.indicies[sourceFile] + (sourceRank +1) + FILE_MAP.indicies[destFile] + (destRank +1);
+    
+    
     moves.push(copy);
 };
 
@@ -126,8 +141,7 @@ ChessNode.applyMove = function(state, sourceRank, sourceFile, destRank, destFile
  */
 ChessNode.areNotSameColor = function(source, destination)
 {
-    // If either is 0, then they are not the same color as that square has no piece.
-    return source === 0 || destination === 0 || ((source & 8) !== (destination & 8));
+    return  source === 0 || destination === 0 || ((source & 8) !== (destination & 8));
 };
 
 /**
@@ -162,7 +176,7 @@ ChessNode.rankAdd = function(rank, amount)
     return retVal;
 };
 
-ChessNode.generateMoves = function(state, activePlayer)
+ChessNode.generateMoves = function(state, activePlayer, onlyCaptures)
 {
     var currentCell = 0;
     var moves =[];
@@ -183,23 +197,23 @@ ChessNode.generateMoves = function(state, activePlayer)
             switch(currentCell & 7)
             {
                 case PIECES.P:
-                    moves = moves.concat(ChessNode.movePawn(state, rank, file)); 
+                    moves = moves.concat(ChessNode.movePawn(state, rank, file, onlyCaptures)); 
                     break;
                 case PIECES.N:
-                    moves = moves.concat(ChessNode.moveKnight(state, rank, file));
+                    moves = moves.concat(ChessNode.moveKnight(state, rank, file, onlyCaptures));
                     break;
                 case PIECES.R:
-                    moves = moves.concat(ChessNode.moveLinearly(state, rank, file));
+                    moves = moves.concat(ChessNode.moveLinearly(state, rank, file, onlyCaptures));
                     break;
-                case PIECES.WB:
+                case PIECES.BW:
                 case PIECES.BB:
-                    moves = moves.concat(ChessNode.moveDiagonally(state, rank, file));
+                    moves = moves.concat(ChessNode.moveDiagonally(state, rank, file, onlyCaptures));
                     break;
                 case PIECES.Q:
-                    moves = moves.concat(ChessNode.moveQueen(state, rank, file));
+                    moves = moves.concat(ChessNode.moveQueen(state, rank, file, onlyCaptures));
                     break;
                 case PIECES.K:
-                    moves = moves.concat(ChessNode.moveKing(state, rank, file));
+                    moves = moves.concat(ChessNode.moveKing(state, rank, file, onlyCaptures));
                     break;
                 default: 
                     break;
@@ -210,25 +224,28 @@ ChessNode.generateMoves = function(state, activePlayer)
     return moves;
 };
 
-ChessNode.movePawn = function(state, rank, file)
+ChessNode.movePawn = function(state, rank, file, onlyCaptures)
 {
     var source = ChessNode.mask(state.boardState[rank], file), destination;
     var finalStates = [];
     var rankMod = source & 8 ? -1 : 1; // Move down if black, up if white
     var startingRank = source & 8 ? 6 : 1; // Rank where pawn can move two
     
-    // Move one
-    destination = ChessNode.mask(state.boardState[rank + rankMod], file);
-    if (destination === 0) // Unoccupied
+    if(!onlyCaptures)
     {
-        ChessNode.addMove(finalStates, state, rank, file, rank + rankMod, file, source);
-    
-        // Move two; only if it can already move one
-        if (rank === startingRank)
+        // Move one
+        destination = ChessNode.mask(state.boardState[rank + rankMod], file);
+        if (destination === 0) // Unoccupied
         {
-            destination = ChessNode.mask(state.boardState[rank + (rankMod << 1)], file);
-            if (destination === 0) // Unoccupied
-                ChessNode.addMove(finalStates, state, rank, file, rank + (rankMod << 1), file, source);
+            ChessNode.addMove(finalStates, state, rank, file, rank + rankMod, file, source);
+        
+            // Move two; only if it can already move one
+            if (rank === startingRank)
+            {
+                destination = ChessNode.mask(state.boardState[rank + (rankMod << 1)], file);
+                if (destination === 0) // Unoccupied
+                    ChessNode.addMove(finalStates, state, rank, file, rank + (rankMod << 1), file, source);
+            }
         }
     }
     
@@ -254,7 +271,7 @@ var KNIGHT_MAP = {
     "F" : [1,2, 2, 1,-1,-2,-2,-1]
 };
 
-ChessNode.moveKnight = function(state, rank, file)
+ChessNode.moveKnight = function(state, rank, file,onlyCaptures)
 {
     var tempRank = rank;
     var tempFile = file;
@@ -272,11 +289,18 @@ ChessNode.moveKnight = function(state, rank, file)
         // Ensure valid destination and not capturing own piece
         if (destination != null && ChessNode.areNotSameColor(source, destination))
         {
+            // Profiled this literally has no impact on execution time.
+            if(destination === 0 && onlyCaptures)
+            {
+                tempRank = rank;
+                tempFile = file;
+                continue;
+            }
+            
             copy = ChessNode.copy(state);
             ChessNode.applyMove(copy, rank, file, tempRank, tempFile, source);
-            
-            copy.move = "N" + FILE_MAP.indicies[file] + (rank +1) + FILE_MAP.indicies[tempFile] + (tempRank +1);
-
+            copy.move = "N" + FILE_MAP.indicies[file] + (rank + 1) + FILE_MAP.indicies[tempFile] + (tempRank + 1);
+                
             finalStates.push(copy);
         }
         
@@ -287,7 +311,7 @@ ChessNode.moveKnight = function(state, rank, file)
     return finalStates;
 };
 
-ChessNode.moveLinearly = function(state, rank, file)
+ChessNode.moveLinearly = function(state, rank, file, onlyCaptures)
 {
     var source = ChessNode.mask(state.boardState[rank], file), destination;
     var finalStates = [];
@@ -308,6 +332,9 @@ ChessNode.moveLinearly = function(state, rank, file)
                     
                 if (destination === 0) // Empty square
                 {
+                    if(onlyCaptures)
+                        continue;
+                        
                     ChessNode.addMove(finalStates, state, rank, file, rank, ChessNode.fileAdd(file, move * mod), source);
                 }
                 else if (ChessNode.areNotSameColor(source, destination))
@@ -327,13 +354,17 @@ ChessNode.moveLinearly = function(state, rank, file)
                 
                 if (destination == null)
                     break;
-                    
+                
                 if (destination === 0) // Empty square
                 {
+                    if(onlyCaptures)
+                        continue;
+                        
                     ChessNode.addMove(finalStates, state, rank, file, ChessNode.rankAdd(rank, move * mod), file, source);
                 }
                 else if (ChessNode.areNotSameColor(source, destination))
                 {
+                    
                     ChessNode.addMove(finalStates, state, rank, file, ChessNode.rankAdd(rank, move * mod), file, source);
                     break;
                 }
@@ -346,7 +377,7 @@ ChessNode.moveLinearly = function(state, rank, file)
     return finalStates;
 };
 
-ChessNode.moveDiagonally = function(state, rank, file)
+ChessNode.moveDiagonally = function(state, rank, file, onlyCaptures)
 {
     var source = ChessNode.mask(state.boardState[rank], file), destination;
     var finalStates = [];
@@ -368,6 +399,9 @@ ChessNode.moveDiagonally = function(state, rank, file)
                 
             if (destination === 0) // Empty square
             {
+                if(onlyCaptures)
+                    continue;
+                        
                 ChessNode.addMove(finalStates, state, rank, file, 
                     ChessNode.rankAdd(rank, move * rankMod), ChessNode.fileAdd(file, move * fileMod), source);
             }
@@ -385,10 +419,10 @@ ChessNode.moveDiagonally = function(state, rank, file)
     return finalStates;
 };
 
-ChessNode.moveQueen = function(state, rank, file)
+ChessNode.moveQueen = function(state, rank, file, onlyCaptures)
 {
-    var states = ChessNode.moveLinearly(state, rank, file);
-    var diagonalStates = ChessNode.moveDiagonally(state, rank, file);
+    var states = ChessNode.moveLinearly(state, rank, file, onlyCaptures);
+    var diagonalStates = ChessNode.moveDiagonally(state, rank, file,onlyCaptures);
     
     for (var i in diagonalStates)
         states.push(diagonalStates[i]);
@@ -396,7 +430,7 @@ ChessNode.moveQueen = function(state, rank, file)
     return states;
 };
 
-ChessNode.moveKing = function(state, rank, file)
+ChessNode.moveKing = function(state, rank, file, onlyCaptures)
 {
     var source = ChessNode.mask(state.boardState[rank], file), destination;
     var finalStates = [];
@@ -417,6 +451,9 @@ ChessNode.moveKing = function(state, rank, file)
                     
             if (destination === 0 || ChessNode.areNotSameColor(source, destination))
             {
+                if(destination === 0  && onlyCaptures)
+                    continue;
+                    
                 ChessNode.addMove(finalStates, state, rank, file, 
                     ChessNode.rankAdd(rank, rankMod), ChessNode.fileAdd(file, fileMod), source);
             }
@@ -509,10 +546,10 @@ ChessNode.getMaterialValue = function(cell, file)
     switch(cell & 7)
     {
         case PIECES.P:
-            retVal = DEFAULT_WEIGHT[PIECES.P] * (file === 3 || file === 4) ? 1 : 2;
-            break;
+          //  retVal = DEFAULT_WEIGHT[PIECES.P] * (file === 3 || file === 4) ? 1 : 2;
+            //break;
             
-        case PIECES.WB:
+        case PIECES.BW:
         case PIECES.BB:
         case PIECES.N:
         case PIECES.R:
@@ -543,14 +580,14 @@ ChessNode.quiescence = function(state)
 };
 
 var SQUARE_MASKS = {
-    "A":15,
-    "B":240,
-    "C":3840,
-    "D":61440,
-    "E":983040,
-    "F":15728640,
-    "G":251658240,
-    "H":4026531840,
+    "a":15,
+    "b":240,
+    "c":3840,
+    "d":61440,
+    "e":983040,
+    "f":15728640,
+    "g":251658240,
+    "h":4026531840,
     0:15,
     1:240,
     2:3840,
@@ -567,14 +604,14 @@ var PIECES = {
     "N"  : 3,
     "Q"  : 4,
     "K"  : 5,
-    "WB" : 6,
+    "BW" : 6,
     "BB" : 7,
     1 : "P",
     2 : "R",
     3 : "N",
     4 : "Q",
     5 : "K",
-    6 : "WB",
+    6 : "BW",
     7 : "BB"
 };
 
@@ -584,20 +621,20 @@ var DEFAULT_WEIGHT = {
     "N"  :3,
     "Q"  :9,
     "K"  :500, // This ensures states with no kings won't happen.
-    "WB" :3,
+    "BW" :3,
     "BB" :3  
 };
 
 var FILE_MAP = {
-    "A":0,
-    "B":1,
-    "C":2,
-    "D":3,
-    "E":4,
-    "F":5,
-    "G":6,
-    "H":7,
-    "indicies":["A","B","C","D","E","F","G","H"],
+    "a":0,
+    "b":1,
+    "c":2,
+    "d":3,
+    "e":4,
+    "f":5,
+    "g":6,
+    "h":7,
+    "indicies":["a","b","c","d","e","f","g","h"],
     "count":8
 };
 

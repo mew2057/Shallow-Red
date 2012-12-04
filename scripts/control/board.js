@@ -38,7 +38,7 @@ Board.test = function()
     var color = 0;
     
     // This is just me testing out your test to check that my move generation works.
-    for(var limit = 21; limit > 0; limit --)
+    for(var limit = 20; limit > 0; limit --)
     {
         c = negaSearch(c, color,3);
         

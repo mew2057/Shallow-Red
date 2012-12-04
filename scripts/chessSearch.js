@@ -5,7 +5,7 @@ function negaSearch(chessNode, color, maxDepth)
     var moveList = ChessNode.generateMoves(chessNode, color);
     var alpha = -5000, beta  =  5000,  score = 0;
     var goodMoves = [];
-    var badMoves =[];
+    
     chessNode.moveCount ++;
     
     for(var index in moveList)
@@ -17,35 +17,31 @@ function negaSearch(chessNode, color, maxDepth)
             alpha = score;  
             goodMoves = [];
             goodMoves.push(moveList[index]);
-           // console.log(score,moveList[index].move );
         }
         else if(score === alpha)
         {
-             //           console.log(score,moveList[index].move );
-
             goodMoves.push(moveList[index]);
         }      
     }
-    /*
-    var str = "";    
-    for(var index =0; index < goodMoves.length; index++)
-        str += " " + goodMoves[index].move;
-    */
-    console.log(((new Date().getTime() - startTime) / 1000) + "s", goodMoves.length, moveList.length);
     
-    //return goodMoves[Math.floor(Math.random() * goodMoves.length)];
-    return goodMoves[0];
+    console.log(((new Date().getTime() - startTime) / 1000) + "s", goodMoves.length, moveList.length);
+  return goodMoves[0];
+  return goodMoves[Math.floor(Math.random() * goodMoves.length)];
 }
 
 function negamax( chessNode, color, depth, alpha, beta) 
 {   
     if ( depth === 0 ) 
-        return ChessNode.COLOR_MULTI[color] * ChessNode.utility(chessNode);
+        return quiescence(chessNode, color);
     
     var max = -5000;
     var score;
     var moveList = ChessNode.generateMoves(chessNode, color);
     
+    // Terminal node
+    if(moveList.length === 0)
+        return ChessNode.COLOR_MULTI[color] * ChessNode.utility(chessNode);
+        
     for ( var index in moveList)  
     {
         score = -negamax( moveList[index], ((color + 1) % 2), depth - 1, -beta, -alpha );
@@ -57,4 +53,21 @@ function negamax( chessNode, color, depth, alpha, beta)
             max = score;
     }
     return max;
+}
+
+function quiescence (node, color, _alpha, beta)
+{
+    var s_pat = ChessNode.COLOR_MULTI[color] * ChessNode.utility(node);
+    var alpha = _alpha;
+    
+    if(s_pat >=beta)
+        return beta;
+    // Alpha may be decreased by the worst possible move.
+    if(alpha < s_pat)
+        alpha = s_pat;
+   
+    var score = 0;
+    //var captures = ChessNode.generateMoves(node, color, true);
+
+    return s_pat;
 }
