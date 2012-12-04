@@ -1,5 +1,7 @@
 
 
+function Search() {}
+
 Search.maxColor = 0;
 Search.minColor = 1;
 
@@ -14,8 +16,6 @@ Search.potentialStates = null;
 
 Search.processedStates = null;
 
-function Search() {}
-
 Search.minimaxSearch = function(state, color, depth)
 {
     var startTime = new Date().getTime();
@@ -24,8 +24,7 @@ Search.minimaxSearch = function(state, color, depth)
     Search.depth = depth;
     
     Search.processedStates = 0;
-    Search.potentialStates = [];
-    var goodStates = [];
+    Search.potentialStates = [], goodStates = [];
 
     if (color === 0)
     {
@@ -46,12 +45,17 @@ Search.minimaxSearch = function(state, color, depth)
             goodStates.push(Search.potentialStates[i][1]);
         }
     }
-    
+    /*
+    var str = "";    
+    for(var index =0; index < goodStates.length; index++)
+        str += " " + goodStates[index].move;
+    console.log(str);
+    */
     console.log(((new Date().getTime() - startTime) / 1000) + "s",
-            "Best Value", Search.bestValue, "Processed:", Search.processedStates, "Good states:", goodStates.length);
+            "Best Value:", Search.bestValue, "Processed:", Search.processedStates, "Good states:", goodStates.length);
     
-   // return goodStates[Math.floor(Math.random() * goodStates.length)];
-   return goodMoves[0];
+    return goodStates[0];
+    return goodStates[Math.floor(Math.random() * goodStates.length)];
 };
 
 Search.max = function(state, alpha, beta)

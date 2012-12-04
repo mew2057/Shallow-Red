@@ -428,7 +428,7 @@ ChessNode.moveKing = function(state, rank, file)
 
 ChessNode.simpleUtility = function(state)
 {
-    var utilityValue = 0;
+    var utilityValue = 0, cellUtility;
     var piece;
     
     for (var rank = 0; rank < state.boardState.length; rank++)
@@ -436,7 +436,9 @@ ChessNode.simpleUtility = function(state)
         for (var file = 0; file < state.boardState.length; file++)
         {
             piece = ChessNode.mask(state.boardState[rank], file);
-            utilityValue += (piece & 8 ? 1 : -1) * DEFAULT_WEIGHT[PIECES[piece & 7]];
+            cellUtility = (piece & 8 ? -1 : 1) * DEFAULT_WEIGHT[PIECES[piece & 7]];
+            if (cellUtility)
+                utilityValue += cellUtility;
         }
     }
     

@@ -38,9 +38,9 @@ Board.test = function()
     var color = 0;
     
     // This is just me testing out your test to check that my move generation works.
-    for(var limit = 20; limit > 0; limit --)
+    for(var limit = 21; limit > 0; limit --)
     {
-        c = negaSearch(c, color,4);
+        c = negaSearch(c, color,3);
         
         if(c === null)
             break;
@@ -84,6 +84,39 @@ Board.test = function()
     console.log(ChessNode.utility(c.boardState,0));*/
 
 };
+
+Board.test2 = function()
+{
+    var c = new ChessNode();
+    var color = 0;
+    
+    // This is just me testing out your test to check that my move generation works.
+    for(var limit = 21; limit > 0; limit --)
+    {
+        /*
+        c = negaSearch(c, color, 4);
+        
+        if(c === null)
+            break;
+            
+        console.log("Chosen Move: ", c.move, ChessNode.utility(c, color));
+        
+        Board.showState(c);
+        
+        color = (color + 1) % 2;
+        */
+        
+        c = Search.minimaxSearch(c, color, 3);
+        
+        if(c == null)
+            break;
+        
+        Board.showState(c);
+        
+        color = (color + 1) % 2;
+    }
+    return c;
+}
 
 Board.forceState = function(state, preserveQueue)
 {
