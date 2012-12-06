@@ -81,6 +81,8 @@ ChessNode.processIncoming = function(moveString, state)
     
     state.boardState[sourceRank] &= ~SQUARE_MASKS[sourceFile];   
     
+    state.move = moveString;
+    
     return state;
 };
 
@@ -492,42 +494,49 @@ ChessNode.simpleUtility = function(state)
 ChessNode.utility = function(node)
 {
     var utilityValue = 0;
+    var currentCell = 0;
+    var bishops = 0;
     
+    
+     
     for(var rank = 0; rank < node.boardState.length; rank ++)
     {
-        if(node.boardState[rank] !== 0)
+        if(node.boardState[rank] === 0)
+            continue;
+            
+        for(var file = 0; file < 8; file++)
         {
-            // calculate util on a row by row basis
-            utilityValue += ChessNode.rowUtility(node.boardState[rank]);
+            currentCell = ChessNode.mask(node.boardState[rank], file);
+            if(currentCell !== 0)
+            {
+                switch(currentCell & 7)
+                {
+                    case PIECES.BW:
+                    case PIECES.BB:
+                        bishops +=ChessNode.COLOR_MULTI[((currentCell & 8) >> 3)]*.5;
+                        break;
+                    /*case PIECES.P:                       
+                    case PIECES.N:
+                    case PIECES.R:
+                    case PIECES.Q:
+                    case PIECES.K:        
+                       
+                        break;*/
+                    default:
+                }
+                 utilityValue += 
+                            ChessNode.COLOR_MULTI[((currentCell & 8) >> 3)] *
+                            DEFAULT_WEIGHT[PIECES[currentCell & 7]];
+            }
+            
         }
     }
-
+    
+    utilityValue += bishops;
+    
     return utilityValue;    
 };
 
-/**
- * This was implemented to cut down on cyclomatic complexityfor the utility function.
- * @param rank The variable representing a rank with cell data encoded as specified in the ChessNode notes.
- * 
- * @return The utility value of the rank.
- */
-ChessNode.rowUtility = function(rank, color)
-{
-    var currentCell = 0, rowValue = 0;
-    
-    
-    for(var file = 0; file < 8; file++)
-    {
-        currentCell = ChessNode.mask(rank, file);
-        if(currentCell !== 0)
-        {
-            rowValue += ChessNode.COLOR_MULTI[((currentCell & 8) >> 3)] * 
-                            ChessNode.getMaterialValue(currentCell, file);      
-        }
-    }
-    
-    return rowValue;
-};
 
 
 ChessNode.getStateMobility = function(state)
@@ -546,8 +555,6 @@ ChessNode.getMaterialValue = function(cell, file)
     switch(cell & 7)
     {
         case PIECES.P:
-          //  retVal = DEFAULT_WEIGHT[PIECES.P] * (file === 3 || file === 4) ? 1 : 2;
-            //break;
             
         case PIECES.BW:
         case PIECES.BB:
@@ -620,7 +627,7 @@ var DEFAULT_WEIGHT = {
     "R"  :6,
     "N"  :3,
     "Q"  :9,
-    "K"  :500, // This ensures states with no kings won't happen.
+    "K"  :1000, // This ensures states with no kings won't happen.
     "BW" :3,
     "BB" :3  
 };
