@@ -36,35 +36,14 @@ Board.test = function()
 {
     var c = new ChessNode();
     var color = 0;
-    /*
-    c = ChessNode.processIncoming("Pe2e4", c);
-    Board.showState(c);
-    
-    c = negaSearch(c, 1 ,3);
-    Board.showState(c);
-    c = ChessNode.processIncoming("Qd1h5", c);
-    Board.showState(c);
-
-    c = negaSearch(c, 1 ,3);
-Board.showState(c);
-    
-    c = ChessNode.processIncoming("Bf1c4", c);
-    Board.showState(c);
-    
-    c = negaSearch(c, 1 ,3);
-Board.showState(c);
-    
-    c = ChessNode.processIncoming("Qh5f7", c);
-    Board.showState(c);
-   
-    c = negaSearch(c, 1 ,3);
-Board.showState(c);*/
-
+    console.log(c.moveCount);
+    c.opening = WHITE.RUY_LOPEZ;
     // This is just me testing out your test to check that my move generation works.
     for(var limit = 100; limit > 0; limit --)
     {
-        c = negaSearch(c, color,4, true);
+        c = negaSearch(c, color,3, true);
         
+        c.moveCount++;
         if(c === null)
             break;
             
@@ -76,7 +55,7 @@ Board.showState(c);*/
         if(Math.abs(ChessNode.utility(c, color)) > 400) 
             break;
             
-        c = negaSearch(c, color,4, true);
+        c = negaSearch(c, color,3, true);
         
         if(c === null)
             break;

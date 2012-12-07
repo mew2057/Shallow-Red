@@ -43,6 +43,7 @@ function ChessNode()
     this.boardState = [593839922, 286331153, 0, 0, 0, 0, 2576980377, 2885537466];
     this.move   = "";
     this.moveCount = 0;
+    this.opening = null;
     
     
     // *### *-color #-piece
@@ -483,7 +484,17 @@ ChessNode.simpleUtility = function(state)
     
     return utilityValue;    
 };
-
+ChessNode.utilityVars = {
+    // Pawn file black.
+    "pFB":[0,0,0, 0,0,0,0,0],
+    "pFW":[0,0,0, 0,0,0,0,0],
+    "pSum":0,
+    "bSum":0,
+    "bW":0,
+    "bB":0,
+    "nSum":0,
+    "rSum":0
+};
 /**
  * The evaluation function for the "correctness" of a board combination.
  * At the time of writing performs a material advantage calculation for the supplied color.
@@ -495,16 +506,14 @@ ChessNode.utility = function(node)
 {
     var utilityValue = 0;
     var currentCell = 0;
-    var bishops = 0;
+    var file = 0,rank = 0;
     
-    
-     
-    for(var rank = 0; rank < node.boardState.length; rank ++)
+    for(rank = 0; rank < node.boardState.length; rank ++)
     {
         if(node.boardState[rank] === 0)
             continue;
             
-        for(var file = 0; file < 8; file++)
+        for(file = 0; file < 8; file++)
         {
             currentCell = ChessNode.mask(node.boardState[rank], file);
             if(currentCell !== 0)
@@ -512,13 +521,24 @@ ChessNode.utility = function(node)
                 switch(currentCell & 7)
                 {
                     case PIECES.BW:
-                    case PIECES.BB:
-                        bishops +=ChessNode.COLOR_MULTI[((currentCell & 8) >> 3)]*.5;
+                        ChessNode.utilityVars.bW += ChessNode.COLOR_MULTI[((currentCell & 8) >> 3)];
                         break;
-                    /*case PIECES.P:                       
+                    case PIECES.BB:
+                        ChessNode.utilityVars.bB += ChessNode.COLOR_MULTI[((currentCell & 8) >> 3)];
+                        break;
+                    case PIECES.P:  
+                        if((currentCell & 8) === 0)
+                            ChessNode.utilityVars.pFW[file] ++;
+                        else
+                            ChessNode.utilityVars.pFB[file] ++;
+                        break;
                     case PIECES.N:
+                        ChessNode.utilityVars.nSum+= ChessNode.COLOR_MULTI[((currentCell & 8) >> 3)];
+                        break;
                     case PIECES.R:
-                    case PIECES.Q:
+                        ChessNode.utilityVars.rSum+= ChessNode.COLOR_MULTI[((currentCell & 8) >> 3)];
+                        break;
+                    /*case PIECES.Q:
                     case PIECES.K:        
                        
                         break;*/
@@ -532,43 +552,73 @@ ChessNode.utility = function(node)
         }
     }
     
-    utilityValue += bishops;
     
-    return utilityValue;    
-};
-
-
-
-ChessNode.getStateMobility = function(state)
-{
+    // Pawn maths.
+    // First check the first file.
+    /*
+    // Doubling check.
+    if(ChessNode.utilityVars.pFB[0] > 1);
+        ChessNode.utilityVars.pSum += ChessNode.utilityVars.pFB[0];
+        
+    // Isolation check.    
+    if(ChessNode.utilityVars.pFB[0] !== 0 && ChessNode.utilityVars.pFB[1]===0)
+        ChessNode.utilityVars.pSum += ChessNode.utilityVars.pFB[0];
     
-};
-
-/**
- * Retrieves the current material value for a piece.
- * @param cell The cell to attempt to discern a utility value for.
- * @return The material weight of the piece.
- */
-ChessNode.getMaterialValue = function(cell, file)
-{
-    var retVal = 0;
-    switch(cell & 7)
+    // Doubling check.
+    if(ChessNode.utilityVars.pFW[0] > 1);
+        ChessNode.utilityVars.pSum -= ChessNode.utilityVars.pFW[0];
+        
+    // Isolation check.    
+    if(ChessNode.utilityVars.pFW[0] !== 0 && ChessNode.utilityVars.pFW[1]===0)
+        ChessNode.utilityVars.pSum -= ChessNode.utilityVars.pFW[0];
+    
+    for(file = 1; file < 8;file++)
     {
-        case PIECES.P:
+        // Doubling check.
+        if(ChessNode.utilityVars.pFB[file] > 1);
+            ChessNode.utilityVars.pSum += ChessNode.utilityVars.pFB[file];
             
-        case PIECES.BW:
-        case PIECES.BB:
-        case PIECES.N:
-        case PIECES.R:
-        case PIECES.Q:
-        case PIECES.K:        
-            retVal =  DEFAULT_WEIGHT[PIECES[cell & 7]];
-            break;
-        default:
+        // Isolation check.    
+        if(ChessNode.utilityVars.pFB[file] !== 0 && 
+            ChessNode.utilityVars.pFB[file - 1] === 0 && 
+            ChessNode.utilityVars.pFB[file + 1] === 0)
+            ChessNode.utilityVars.pSum += ChessNode.utilityVars.pFB[file];
+        
+         // Doubling check.
+        if(ChessNode.utilityVars.pFW[file] > 1);
+            ChessNode.utilityVars.pSum -= ChessNode.utilityVars.pFW[file];
+            
+        // Isolation check.    
+        if(ChessNode.utilityVars.pFW[file] !== 0 && 
+            ChessNode.utilityVars.pFW[file - 1] === 0 && 
+            ChessNode.utilityVars.pFW[file + 1] === 0)
+            ChessNode.utilityVars.pSum -= ChessNode.utilityVars.pFW[file];
+        
+       ChessNode.utilityVars.pFW[file-1] = 0;
+       ChessNode.utilityVars.pFB[file-1] = 0;
+
+       
     }
+    ChessNode.utilityVars.pFW[7] = 0;
+    ChessNode.utilityVars.pFB[7] = 0;*/
+    // End pawn maths
     
-    return retVal;
+    // Put it all together and what do you get?! UTILITY!
     
+    utilityValue +=  (ChessNode.utilityVars.bB + ChessNode.utilityVars.bW);   //Bishop modifier
+     //    + ChessNode.utilityVars.pSum * 0.2;                                  // Pawn Structure
+     /*  - ChessNode.utilityVars.nSum * 4/(ChessNode.utilityVars.pSum+1)    // Knight modifier
+         - ChessNode.utilityVars.rSum * (ChessNode.utilityVars.pSum+1)/32;    // Rook Modifier
+       */ 
+    
+    // Zero all the things!
+    ChessNode.utilityVars.pSum = 0;
+    ChessNode.utilityVars.bB = 0;
+    ChessNode.utilityVars.bW = 0;   
+    ChessNode.utilityVars.nSum = 0;
+    ChessNode.utilityVars.rSum = 0;
+
+    return utilityValue;
 };
 
 /**

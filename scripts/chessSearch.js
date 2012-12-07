@@ -5,9 +5,7 @@ function negaSearch(chessNode, color, maxDepth, noQ)
     var moveList = ChessNode.generateMoves(chessNode, color);
     var alpha = -5000, beta  =  5000,  score = 0;
     var goodMoves = [];
-    
-    chessNode.moveCount ++;
-    
+        
     for(var index in moveList)
     {
         score = -negamax(moveList[index], ((color + 1 )% 2), maxDepth-1, -beta,-alpha, noQ);
@@ -30,24 +28,34 @@ function negaSearch(chessNode, color, maxDepth, noQ)
             goodMoves.push(moveList[index]);
         }      
     }
-    var str = "";
-    for(var index in goodMoves)
-        str+=goodMoves[index].move + " ";
-    console.log(((new Date().getTime() - startTime) / 1000) + "s", goodMoves.length, moveList.length, str);
-//  return goodMoves[0];
-  return goodMoves[Math.floor(Math.random() * goodMoves.length)];
+    
+    if(chessNode.opening)
+    {
+       // console.log(chessNode.opening[chessNode.moveCount]);
+        for(index in goodMoves)
+        {
+            if(goodMoves[index].move === chessNode.opening[chessNode.moveCount])
+            {
+                return goodMoves[index];
+            }
+        }
+        
+        chessNode.opening = null;
+    }
+    
+    return goodMoves[Math.floor(Math.random() * goodMoves.length)];  
 }
 
 function negamax( chessNode, color, depth, alpha, beta, noQ) 
 {   
     if ( depth === 0 ) 
     {
-        if(noQ)
-        {
+        //if(noQ)
+        //{
             return ChessNode.COLOR_MULTI[color] * ChessNode.utility(chessNode);
-        }
+        /*}
         else
-            return quiescence(chessNode, color, alpha, beta, depth);    
+            return quiescence(chessNode, color, alpha, beta, depth);    */
     }
     
     
