@@ -1,5 +1,9 @@
 
 ChessNode.COLOR_MULTI = [1,-1];
+
+// This should suffice in detecting a pawn that MAY be susceptible to an en passant attack.
+ChessNode.EN_PASSANT_PATTERN = /(P[a-h]7[a-h]5)|(P[a-h]2[a-h]4)/;
+ChessNode.CASTLE_PATTERN = /Ke[1|8][b|c][1|8]/;
 function ChessNode()
 {
     /*
@@ -41,7 +45,9 @@ function ChessNode()
        A   B   C   D   E   F   G   H
     */
     this.boardState = [593839922, 286331153, 0, 0, 0, 0, 2576980377, 2885537466];
-    this.move   = "";
+    this.move  = "";
+    this.lastOpponentMove = "";
+    this.lastMove = "";
     this.moveCount = 0;
     this.opening = null;
     this.whiteCanCastle = true;
@@ -62,7 +68,10 @@ ChessNode.copy = function(state)
     for (var i = 0; i < state.boardState.length; i++)
         copy.boardState[i] = state.boardState[i];
     
-    copy.moveCount = state;
+    copy.move = state.move;
+    copy.lastMove = state.lastMove;
+    copy.lastOpponentMove = state.lastOpponentMove;
+    copy.moveCount = state.moveCount;
     
     return copy;
 };
@@ -70,19 +79,51 @@ ChessNode.copy = function(state)
 ChessNode.processIncoming = function(moveString, state)
 {
     var sourceFile = FILE_MAP[moveString.charAt(1)];
-    var sourceRank = parseInt(moveString.charAt(2), 10)-1;
-    
-    var piece = ChessNode.mask(state.boardState[sourceRank], sourceFile);
+    var sourceRank = parseInt(moveString.charAt(2), 10) - 1;
     
     var destFile = FILE_MAP[moveString.charAt(3)];
-    var destRank = parseInt(moveString.charAt(4), 10)-1 ;
+    var destRank = parseInt(moveString.charAt(4), 10) - 1;
+    
+    var promotionPiece = PIECES[moveString.charAt(5)];
+    var source = ChessNode.mask(state.boardState[sourceRank], sourceFile);
+    var destination = ChessNode.mask(state.boardState[destRank], destFile);
+    var color = source & 8;
+    source = promotionPiece ? promotionPiece | color : source;
     
     state.boardState[destRank] &= ~SQUARE_MASKS[destFile];
-    state.boardState[destRank] |= piece << (destFile << 2);
+    state.boardState[destRank] |= source << (destFile << 2);
     
-    state.boardState[sourceRank] &= ~SQUARE_MASKS[sourceFile];   
+    state.boardState[sourceRank] &= ~SQUARE_MASKS[sourceFile];
     
-    state.move = moveString;
+    // Check for castling
+    if ((source & 7) === PIECES.K && (Math.abs(sourceFile - destFile) > 1))
+    {
+        // Castling - move the rook
+        if (destFile === 6) // King's side
+        {
+            state.boardState[sourceRank] &= ~SQUARE_MASKS[7];
+            state.boardState[sourceRank] |= (PIECES.R | color) << 20;
+        }
+        else if (destFile === 2) // Queen's side
+        {
+            state.boardState[sourceRank] &= ~SQUARE_MASKS[0];
+            state.boardState[sourceRank] |= (PIECES.R | color) << 12;
+        }
+    }
+    
+    // Check for en passant - if pawn moved diagonally and the destination is empty...
+    if (((source & 7) === PIECES.P) && (Math.abs(sourceFile - destFile) > 0) && (destination === 0))
+    {
+        state.boardState[sourceRank] &= ~SQUARE_MASKS[destFile];
+    }
+    
+    // Opponent moves should only enter here.
+    state.lastOpponentMove = moveString;
+    
+    // Push back the last move.
+    state.lastMove = state.move;
+    
+    console.log("LOP:",state.lastOpponentMove, "LM:", state.lastMove, "M:", state.move);
     
     return state;
 };
@@ -122,6 +163,7 @@ ChessNode.addMove = function(moves, state, sourceRank, sourceFile, destRank, des
     copy.boardState[destRank] &= ~SQUARE_MASKS[destFile];
     copy.boardState[destRank] |= piece << (destFile << 2);
     
+    copy.lastMove = copy.move;
     copy.move = PIECES[piece & 7].charAt(0) + FILE_MAP.indicies[sourceFile] + (sourceRank +1) + FILE_MAP.indicies[destFile] + (destRank +1);
     
     moves.push(copy);
@@ -287,14 +329,17 @@ ChessNode.movePawn = function(state, rank, file, onlyCaptures)
     newRank = rank + rankMod;
     
     // Capture; TODO em passant
+    
+
     destination = ChessNode.mask(state.boardState[newRank], file + 1);
-    if (destination !== 0 && ChessNode.areNotSameColor(source, destination))
+    if (destination !== 0 && ChessNode.areNotSameColor(source, destination) )
     {
         if (newRank === promotionRank)
             ChessNode.addPromotion(finalStates, state, rank, file, ChessNode.rankAdd(rank, rankMod), ChessNode.fileAdd(file, 1), source, promotionPiece);
         else
             ChessNode.addMove(finalStates, state, rank, file, ChessNode.rankAdd(rank, rankMod), ChessNode.fileAdd(file, 1), source);
     }
+        
     
     destination = ChessNode.mask(state.boardState[newRank], file - 1);
     if (destination !== 0 && ChessNode.areNotSameColor(source, destination))
@@ -305,7 +350,28 @@ ChessNode.movePawn = function(state, rank, file, onlyCaptures)
             ChessNode.addMove(finalStates, state, rank, file, ChessNode.rankAdd(rank, rankMod), ChessNode.fileAdd(file, -1), source);
     }
     
+    if ( ChessNode.EN_PASSANT_PATTERN.test(state.lastOpponentMove))
+        ChessNode.enPassantOperation(finalStates, state, rank, file, source);
+
+    
     return finalStates;
+};
+
+ChessNode.enPassantOperation = function(moves, state, sourceRank, sourceFile, piece)
+{
+    var epFile = FILE_MAP[state.lastOpponentMove.charAt(1)];
+    var epRank = state.lastOpponentMove.charAt(2) === 7 ? 6 : 3;
+    var currentLocation = epRank === 6 ? 7 : 4;
+    
+    if((sourceRank  === 4 && epRank === 3) || (sourceRank  === 5 && epRank === 6) )
+    {
+        if((epFile + 1 === sourceFile) || (epFile - 1 === sourceFile))
+        {
+            ChessNode.addMove(moves, state, sourceRank, sourceFile, epRank, epFile, piece);
+            moves[moves.length].boardState[currentLocation] &= ~SQUARE_MASKS[epFile];
+        }
+    }
+    
 };
 
 // Knight operations
@@ -730,21 +796,6 @@ ChessNode.utility = function(node)
     ChessNode.utilityVars.rSum = 0;
 
     return utilityValue;
-};
-
-/**
- * Determines the noise of a state.
- * An implementation of the concept proposed in Programming a Computer for Playing Chess by CLAUDE E. SHANNON
- * As we don't have the time to fully evaluate the quiescence of our board, this
- * implementation only examines captures and checks.
- * 
- * @return {0,1} 0- quiet state
- *               1- noisy state
- */
-ChessNode.quiescence = function(state)
-{
-    // Check Kings for checks
-    // 
 };
 
 var SQUARE_MASKS = {

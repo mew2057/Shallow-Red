@@ -34,41 +34,45 @@ Board.reposition = function()
 
 Board.test = function()
 {
-    var c = new ChessNode();
+    var w = new ChessNode();
+    var b = new ChessNode();
     var color = 0;
-    console.log(c.moveCount);
-    c.opening = WHITE.SCHOLARS_MATE;
     // This is just me testing out your test to check that my move generation works.
     for(var limit = 100; limit > 0; limit --)
     {
-        c = negaSearch(c, color,4, true);
+        w = negaSearch(w, color,3);
         
-        c.moveCount++;
-        if(c === null)
+        w.moveCount++;
+        if(w === null)
             break;
             
-        console.log("Chosen Move: ", c.move, ChessNode.utility(c, color));
+        console.log("Chosen Move W: ", w.move, ChessNode.utility(w, color));
+        ChessNode.processIncoming(w.move, b);
+        
+        color = (color +1)%2;
+        Board.showState(w);
+
+        if(Math.abs(ChessNode.utility(w, color)) > 400) 
+            break;
+            
+        b = negaSearch(b, color,3);
+        
+        if(b === null)
+            break;
+            
+        console.log("Chosen Move B: ", b.move, ChessNode.utility(b, color));
 
         color = (color +1)%2;
-        Board.showState(c);
+        Board.showState(b);
+        ChessNode.processIncoming(b.move, w);
 
-        if(Math.abs(ChessNode.utility(c, color)) > 400) 
-            break;
-            
-        c = negaSearch(c, color,3, true);
         
-        if(c === null)
+        if(Math.abs(ChessNode.utility(b, color)) > 400) 
             break;
+        console.log(b, w);
             
-        console.log("Chosen Move: ", c.move, ChessNode.utility(c, color));
-
-        color = (color +1)%2;
-        Board.showState(c);
-        
-        if(Math.abs(ChessNode.utility(c, color)) > 400) 
-            break;
     }
-    return c;
+    return [b, w];
     /*
     var a = ChessNode.moveKnight(c, 0, 1);
     c = a[0];
@@ -151,24 +155,18 @@ Board.test2 = function()
 Board.moveTest = function()
 {
     var c = new ChessNode();
-    c.boardState[0] = 0;
-    c.boardState[0] = (1 << 0) | (1 << 8);
-    c.boardState[1] = 0;
-    c.boardState[1] = 9 << 4;
     
     Board.forceState(c);
     
-    var a = ChessNode.movePawn(c, 1, 1);
+    console.log(ChessNode.toString(c));
+    ChessNode.processIncoming("Pe2e4", c);
+    ChessNode.processIncoming("Pd7d5", c);
+    ChessNode.processIncoming("Pe4e5", c);
+    Board.showState(c);
+    ChessNode.processIncoming("Pe5d6", c);
     
-    console.log(a);
-    
-    for (var i in a)
-    {
-        console.log(ChessNode.toString(a[i]));
-        console.log(a[i].move);
-    }
-    
-    Board.showState(a[0]);
+    console.log(ChessNode.toString(c));
+    Board.showState(c);
 };
 
 Board.forceState = function(state, preserveQueue)

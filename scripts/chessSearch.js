@@ -1,10 +1,9 @@
 function negaSearch(chessNode, color, maxDepth, noQ)
-{
-    var startTime = new Date().getTime();
-    
+{    
     var moveList = ChessNode.generateMoves(chessNode, color);
     var alpha = -5000, beta  =  5000,  score = 0;
     var goodMoves = [];
+    var moveIndex = 0;
         
     for(var index in moveList)
     {
@@ -43,7 +42,22 @@ function negaSearch(chessNode, color, maxDepth, noQ)
         chessNode.opening = null;
     }
     
-    return goodMoves[Math.floor(Math.random() * goodMoves.length)];  
+    for (index = 0; index < goodMoves.length; index++)
+    {
+        // Castle early (How John plays chess)
+        if(ChessNode.CASTLE_PATTERN.test(goodMoves[index].move))
+            moveIndex = index;
+    }
+    
+    if(index ===goodMoves.length)
+        moveIndex = Math.floor(Math.random() * goodMoves.length);
+    
+   /* if(goodMoves[moveIndex].move.charAt(0) === 'K' && goodMoves[moveIndex].move !===)
+    {
+        moveIndex = goodMoves.length -1;
+    }*/
+    
+    return goodMoves[moveIndex];  
 }
 
 function negamax( chessNode, color, depth, alpha, beta, noQ) 
