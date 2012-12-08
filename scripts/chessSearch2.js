@@ -51,8 +51,8 @@ Search.minimaxSearch = function(state, color, depth)
         str += " " + goodStates[index].move;
     console.log(str);
     */
-    console.log(((new Date().getTime() - startTime) / 1000) + "s",
-            "Best Value:", Search.bestValue, "Processed:", Search.processedStates, "Good states:", goodStates.length);
+    //console.log(((new Date().getTime() - startTime) / 1000) + "s",
+    //        "Best Value:", Search.bestValue, "Processed:", Search.processedStates, "Good states:", goodStates.length);
     
     //return goodStates[0];
     return goodStates[Math.floor(Math.random() * goodStates.length)];

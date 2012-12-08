@@ -37,11 +37,11 @@ Board.test = function()
     var c = new ChessNode();
     var color = 0;
     console.log(c.moveCount);
-    c.opening = WHITE.RUY_LOPEZ;
+    c.opening = WHITE.SCHOLARS_MATE;
     // This is just me testing out your test to check that my move generation works.
     for(var limit = 100; limit > 0; limit --)
     {
-        c = negaSearch(c, color,3, true);
+        c = negaSearch(c, color,4, true);
         
         c.moveCount++;
         if(c === null)
@@ -129,22 +129,47 @@ Board.test2 = function()
         if(c == null)
             break;
         
+        console.log("Chosen Move: ", c.move, ChessNode.utility(c, color));
         Board.showState(c);
         
         color = (color + 1) % 2;
         
         
-        c = Search.minimaxSearch(c, color, 1);
+        c = Search.minimaxSearch(c, color, 3);
         
         if(c == null)
             break;
         
+        console.log("Chosen Move: ", c.move, ChessNode.utility(c, color));
         Board.showState(c);
         
         color = (color + 1) % 2;
     }
     return c;
-}
+};
+
+Board.moveTest = function()
+{
+    var c = new ChessNode();
+    c.boardState[0] = 0;
+    c.boardState[0] = (1 << 0) | (1 << 8);
+    c.boardState[1] = 0;
+    c.boardState[1] = 9 << 4;
+    
+    Board.forceState(c);
+    
+    var a = ChessNode.movePawn(c, 1, 1);
+    
+    console.log(a);
+    
+    for (var i in a)
+    {
+        console.log(ChessNode.toString(a[i]));
+        console.log(a[i].move);
+    }
+    
+    Board.showState(a[0]);
+};
 
 Board.forceState = function(state, preserveQueue)
 {

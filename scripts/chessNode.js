@@ -44,7 +44,8 @@ function ChessNode()
     this.move   = "";
     this.moveCount = 0;
     this.opening = null;
-    
+    this.whiteCanCastle = true;
+    this.blackCanCastle = true;
     
     // *### *-color #-piece
     // Mapping reads A->H
@@ -79,7 +80,6 @@ ChessNode.processIncoming = function(moveString, state)
     state.boardState[destRank] &= ~SQUARE_MASKS[destFile];
     state.boardState[destRank] |= piece << (destFile << 2);
     
-    
     state.boardState[sourceRank] &= ~SQUARE_MASKS[sourceFile];   
     
     state.move = moveString;
@@ -110,7 +110,7 @@ ChessNode.mask = function(rank, file)
 
 ChessNode.addMove = function(moves, state, sourceRank, sourceFile, destRank, destFile, piece)
 {
-    if(destRank === null || destFile === null)
+    if (destRank === null || destFile === null)
         return;
         
     var copy = ChessNode.copy(state);
@@ -124,8 +124,30 @@ ChessNode.addMove = function(moves, state, sourceRank, sourceFile, destRank, des
     
     copy.move = PIECES[piece & 7].charAt(0) + FILE_MAP.indicies[sourceFile] + (sourceRank +1) + FILE_MAP.indicies[destFile] + (destRank +1);
     
+    moves.push(copy);
+    
+    return copy;
+};
+
+ChessNode.addPromotion = function(moves, state, sourceRank, sourceFile, destRank, destFile, piece, promotionPiece)
+{
+    if (destRank === null || destFile === null)
+        return;
+    
+    var copy = ChessNode.copy(state);
+    
+    // Vacate source square
+    copy.boardState[sourceRank] &= ~SQUARE_MASKS[sourceFile];
+    
+    // Vacate destination square and insert piece
+    copy.boardState[destRank] &= ~SQUARE_MASKS[destFile];
+    copy.boardState[destRank] |= promotionPiece << (destFile << 2);
+    
+    copy.move = PIECES[piece & 7].charAt(0) + FILE_MAP.indicies[sourceFile] + (sourceRank + 1) + FILE_MAP.indicies[destFile] + (destRank + 1) + PIECES[promotionPiece & 7];
     
     moves.push(copy);
+    
+    return copy;
 };
 
 ChessNode.applyMove = function(state, sourceRank, sourceFile, destRank, destFile, piece)
@@ -217,6 +239,7 @@ ChessNode.generateMoves = function(state, activePlayer, onlyCaptures)
                     break;
                 case PIECES.K:
                     moves = moves.concat(ChessNode.moveKing(state, rank, file, onlyCaptures));
+                    moves = moves.concat(ChessNode.castle(state,rank, file));
                     break;
                 default: 
                     break;
@@ -234,13 +257,22 @@ ChessNode.movePawn = function(state, rank, file, onlyCaptures)
     var rankMod = source & 8 ? -1 : 1; // Move down if black, up if white
     var startingRank = source & 8 ? 6 : 1; // Rank where pawn can move two
     
+    var newRank, promotionRank = source & 8 ? 0 : 7;
+    var promotionPiece = PIECES.Q | (source & 8);
+    
     if(!onlyCaptures)
     {
         // Move one
         destination = ChessNode.mask(state.boardState[rank + rankMod], file);
         if (destination === 0) // Unoccupied
         {
-            ChessNode.addMove(finalStates, state, rank, file, rank + rankMod, file, source);
+            newRank = rank + rankMod;
+            
+            // Check for promotion
+            if (newRank === promotionRank)
+                ChessNode.addPromotion(finalStates, state, rank, file, newRank, file, source, promotionPiece);
+            else
+                ChessNode.addMove(finalStates, state, rank, file, newRank, file, source);
         
             // Move two; only if it can already move one
             if (rank === startingRank)
@@ -252,17 +284,25 @@ ChessNode.movePawn = function(state, rank, file, onlyCaptures)
         }
     }
     
+    newRank = rank + rankMod;
+    
     // Capture; TODO em passant
-    destination = ChessNode.mask(state.boardState[rank + rankMod], file + 1);
+    destination = ChessNode.mask(state.boardState[newRank], file + 1);
     if (destination !== 0 && ChessNode.areNotSameColor(source, destination))
     {
-        ChessNode.addMove(finalStates, state, rank, file, ChessNode.rankAdd(rank,rankMod), ChessNode.fileAdd(file,1), source);
+        if (newRank === promotionRank)
+            ChessNode.addPromotion(finalStates, state, rank, file, ChessNode.rankAdd(rank, rankMod), ChessNode.fileAdd(file, 1), source, promotionPiece);
+        else
+            ChessNode.addMove(finalStates, state, rank, file, ChessNode.rankAdd(rank, rankMod), ChessNode.fileAdd(file, 1), source);
     }
     
-    destination = ChessNode.mask(state.boardState[rank + rankMod], file - 1);
+    destination = ChessNode.mask(state.boardState[newRank], file - 1);
     if (destination !== 0 && ChessNode.areNotSameColor(source, destination))
     {
-        ChessNode.addMove(finalStates, state, rank, file, ChessNode.rankAdd(rank,rankMod), ChessNode.fileAdd(file,-1), source);
+        if (newRank === promotionRank)
+            ChessNode.addPromotion(finalStates, state, rank, file, ChessNode.rankAdd(rank, rankMod), ChessNode.fileAdd(file, -1), source, promotionPiece);
+        else
+            ChessNode.addMove(finalStates, state, rank, file, ChessNode.rankAdd(rank, rankMod), ChessNode.fileAdd(file, -1), source);
     }
     
     return finalStates;
@@ -377,6 +417,20 @@ ChessNode.moveLinearly = function(state, rank, file, onlyCaptures)
         }
     }
     
+    if (source & 7 === PIECES.R)
+    {
+        if (source & 8) // black
+        {
+            for (var i in finalStates)
+                finalStates[i].blackCanCastle = false;
+        }
+        else // white
+        {
+            for (var i in finalStates)
+                finalStates[i].whiteCanCastle = false;
+        }
+    }
+    
     return finalStates;
 };
 
@@ -463,8 +517,65 @@ ChessNode.moveKing = function(state, rank, file, onlyCaptures)
         }
     }
     
+    if (source & 8) // black
+    {
+        for (var i in finalStates)
+            finalStates[i].blackCanCastle = false;
+    }
+    else // white
+    {
+        for (var i in finalStates)
+            finalStates[i].whiteCanCastle = false;
+    }
+    
     return finalStates;
 };
+
+ChessNode.castle = function(state, rank, file)
+{
+    var source = ChessNode.mask(state.boardState[rank], file);
+    var finalStates = [], newState;
+    
+    if ((rank === 7 && !state.blackCanCastle) || (rank === 0 && !state.whiteCanCastle))
+        return finalStates;
+    
+    var rook;
+    
+    if (file === 4) // King's starting file
+    {
+        rook = ChessNode.mask(state.boardState[rank], 7); // King's side
+        
+        if (rook === (PIECES.R | (source & 8)) && // A rook of the same color
+            (ChessNode.mask(state.boardState[rank], 6) === 0) && // Empty cells in between
+            (ChessNode.mask(state.boardState[rank], 5) === 0))
+        {
+            newState = ChessNode.copy(state);
+            ChessNode.applyMove(newState, rank, file, rank, 6, source);
+            ChessNode.applyMove(newState, rank, 7, rank, 5, rook);
+            newState.move = "K" + FILE_MAP.indicies[file] + (rank + 1) + FILE_MAP.indicies[6] + (rank + 1);
+            
+            finalStates.push(newState);
+        }
+        
+        rook = ChessNode.mask(state.boardState[rank], 0) // Queen's side
+        
+        if (rook === (PIECES.R | (source & 8)) && // A rook of the same color
+            (ChessNode.mask(state.boardState[rank], 1) === 0) && // Empty cells in between
+            (ChessNode.mask(state.boardState[rank], 2) === 0) &&
+            (ChessNode.mask(state.boardState[rank], 3) === 0))
+        {
+            newState = ChessNode.copy(state);
+            ChessNode.applyMove(newState, rank, file, rank, 2, source);
+            ChessNode.applyMove(newState, rank, 0, rank, 3, rook);
+            newState.move = "K" + FILE_MAP.indicies[file] + (rank + 1) + FILE_MAP.indicies[2] + (rank + 1);
+            
+            finalStates.push(newState);
+        }
+    }
+    
+    return finalStates;
+};
+
 
 ChessNode.simpleUtility = function(state)
 {
@@ -605,7 +716,7 @@ ChessNode.utility = function(node)
     
     // Put it all together and what do you get?! UTILITY!
     
-    utilityValue +=  (ChessNode.utilityVars.bB + ChessNode.utilityVars.bW);   //Bishop modifier
+    utilityValue +=  (ChessNode.utilityVars.bB + ChessNode.utilityVars.bW);   //Bishop modifier *This is the only one that seems to be somewhat effective...
      //    + ChessNode.utilityVars.pSum * 0.2;                                  // Pawn Structure
      /*  - ChessNode.utilityVars.nSum * 4/(ChessNode.utilityVars.pSum+1)    // Knight modifier
          - ChessNode.utilityVars.rSum * (ChessNode.utilityVars.pSum+1)/32;    // Rook Modifier
