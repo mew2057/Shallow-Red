@@ -3,7 +3,9 @@ ChessNode.COLOR_MULTI = [1,-1];
 
 // This should suffice in detecting a pawn that MAY be susceptible to an en passant attack.
 ChessNode.EN_PASSANT_PATTERN = /(P[a-h]7[a-h]5)|(P[a-h]2[a-h]4)/;
-ChessNode.CASTLE_PATTERN = /Ke[1|8][b|c][1|8]/;
+ChessNode.CASTLE_PATTERN_QUEEN = /Ke[1|8]c[1|8]/;
+ChessNode.CASTLE_PATTERN_KING  = /Ke[1|8]g[1|8]/;
+
 function ChessNode()
 {
     /*
@@ -185,6 +187,8 @@ ChessNode.addPromotion = function(moves, state, sourceRank, sourceFile, destRank
     copy.boardState[destRank] &= ~SQUARE_MASKS[destFile];
     copy.boardState[destRank] |= promotionPiece << (destFile << 2);
     
+    // Save the previous move and then write the new one to the move field.
+    copy.lastMove = copy.move;
     copy.move = PIECES[piece & 7].charAt(0) + FILE_MAP.indicies[sourceFile] + (sourceRank + 1) + FILE_MAP.indicies[destFile] + (destRank + 1) + PIECES[promotionPiece & 7];
     
     moves.push(copy);
@@ -192,6 +196,17 @@ ChessNode.addPromotion = function(moves, state, sourceRank, sourceFile, destRank
     return copy;
 };
 
+/**
+ * Only used by the knight.
+ * 
+ * @param state The state of the board.
+ * @param sourceRank The rank of the moving piece.
+ * @param sourceFile The file of the moving piece.
+ * @param destRank The destination rank of the action.
+ * @param destFile The destination file of the action.
+ * @parma piece The bit string representing the piece.
+ * @param onlyCaptures {true|false|undef} toggles whether this function should only generate capture moves.
+ */
 ChessNode.applyMove = function(state, sourceRank, sourceFile, destRank, destFile, piece)
 {
     // Vacate source square
@@ -233,6 +248,14 @@ ChessNode.fileAdd = function(file, amount)
     return retVal;
 };
 
+/**
+ * Performs a standardized add for ranks to prevent invalid ranks from occuring.
+ * 
+ * @param rank The rank to be modified.
+ * @param amount The modification amount.
+ * 
+ * @return The freshly increased rank value.
+ */
 ChessNode.rankAdd = function(rank, amount)
 {
     var retVal = rank + amount;
@@ -243,6 +266,13 @@ ChessNode.rankAdd = function(rank, amount)
     return retVal;
 };
 
+/**
+ * Generates a collection of move states to be processed.
+ * 
+ * @param state The state of the board.
+ * @param activePlayer The color of the active player: 0-white, 1-black.
+ * @param onlyCaptures {true|false|undef} toggles whether this function should only generate capture moves.
+ */
 ChessNode.generateMoves = function(state, activePlayer, onlyCaptures)
 {
     var currentCell = 0;
@@ -292,6 +322,14 @@ ChessNode.generateMoves = function(state, activePlayer, onlyCaptures)
     return moves;
 };
 
+/**
+ * Moves a pawn on the board.
+ * 
+ * @param state The state of the board.
+ * @param rank The rank of the moving piece.
+ * @param file The file of the moving piece.
+ * @param onlyCaptures {true|false|undef} toggles whether this function should only generate capture moves.
+ */
 ChessNode.movePawn = function(state, rank, file, onlyCaptures)
 {
     var source = ChessNode.mask(state.boardState[rank], file), destination;
@@ -301,7 +339,6 @@ ChessNode.movePawn = function(state, rank, file, onlyCaptures)
     
     var newRank, promotionRank = source & 8 ? 0 : 7;
     var promotionPiece = PIECES.Q | (source & 8);
-    
     if(!onlyCaptures)
     {
         // Move one
@@ -309,28 +346,31 @@ ChessNode.movePawn = function(state, rank, file, onlyCaptures)
         if (destination === 0) // Unoccupied
         {
             newRank = rank + rankMod;
-            
+
             // Check for promotion
             if (newRank === promotionRank)
                 ChessNode.addPromotion(finalStates, state, rank, file, newRank, file, source, promotionPiece);
             else
                 ChessNode.addMove(finalStates, state, rank, file, newRank, file, source);
-        
+
             // Move two; only if it can already move one
             if (rank === startingRank)
             {
                 destination = ChessNode.mask(state.boardState[rank + (rankMod << 1)], file);
                 if (destination === 0) // Unoccupied
+                {
                     ChessNode.addMove(finalStates, state, rank, file, rank + (rankMod << 1), file, source);
+                                    console.log("here");
+
+                }
             }
         }
     }
     
     newRank = rank + rankMod;
     
-    // Capture; TODO em passant
-    
-
+   
+    // Capture; 
     destination = ChessNode.mask(state.boardState[newRank], file + 1);
     if (destination !== 0 && ChessNode.areNotSameColor(source, destination) )
     {
@@ -352,26 +392,36 @@ ChessNode.movePawn = function(state, rank, file, onlyCaptures)
     
     if ( ChessNode.EN_PASSANT_PATTERN.test(state.lastOpponentMove))
         ChessNode.enPassantOperation(finalStates, state, rank, file, source);
+    
 
     
     return finalStates;
 };
 
+/**
+ * Performs an en passant attack if The attacking and defending pawn meet the configuration needed for the move to be legal.
+ * 
+ * @param moves An array of movement states.
+ * @param state The state of the board before moving.
+ * @parma sourceRank The attacking pawn's rank.
+ * @param sourceFile The attacking pawn's file.
+ * @param piece The attacking piece.
+ */
 ChessNode.enPassantOperation = function(moves, state, sourceRank, sourceFile, piece)
 {
+    // Generate the opponent's pawn motion.
     var epFile = FILE_MAP[state.lastOpponentMove.charAt(1)];
-    var epRank = state.lastOpponentMove.charAt(2) === 7 ? 6 : 3;
-    var currentLocation = epRank === 6 ? 7 : 4;
-    
-    if((sourceRank  === 4 && epRank === 3) || (sourceRank  === 5 && epRank === 6) )
+    var epRank = state.lastOpponentMove.charAt(2) === '7' ? 5 : 2;
+    var currentRank = epRank === 5 ? 4 : 3;
+        
+    if((sourceRank  === 4 && epRank === 5) || (sourceRank  === 3 && epRank === 2) )
     {
         if((epFile + 1 === sourceFile) || (epFile - 1 === sourceFile))
         {
             ChessNode.addMove(moves, state, sourceRank, sourceFile, epRank, epFile, piece);
-            moves[moves.length].boardState[currentLocation] &= ~SQUARE_MASKS[epFile];
+            moves[moves.length-1].boardState[currentRank] &= ~SQUARE_MASKS[epFile];
         }
     }
-    
 };
 
 // Knight operations

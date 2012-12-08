@@ -3,7 +3,8 @@ function negaSearch(chessNode, color, maxDepth, noQ)
     var moveList = ChessNode.generateMoves(chessNode, color);
     var alpha = -5000, beta  =  5000,  score = 0;
     var goodMoves = [];
-    var moveIndex = 0;
+    var nonKingMoves = [];
+    var moveIndex = -1;
         
     for(var index in moveList)
     {
@@ -45,17 +46,28 @@ function negaSearch(chessNode, color, maxDepth, noQ)
     for (index = 0; index < goodMoves.length; index++)
     {
         // Castle early (How John plays chess)
-        if(ChessNode.CASTLE_PATTERN.test(goodMoves[index].move))
+        if(ChessNode.CASTLE_PATTERN_QUEEN.test(goodMoves[index].move))
             moveIndex = index;
+        else if(ChessNode.CASTLE_PATTERN_KING.test(goodMoves[index].move))
+        {
+            moveIndex = index;
+            break;
+        }
+      /*  else if(goodMoves[index].move.charAt(0) !== 'K')
+            nonKingMoves.push(index);*/
+        
     }
     
-    if(index ===goodMoves.length)
-        moveIndex = Math.floor(Math.random() * goodMoves.length);
+    if(moveIndex === -1)
+    {        
+        // This should reduce the movement of our king a little...
+        // This is a lazy way to enforce king safety...
+       /* if ( nonKingMoves.length > 0)
+            moveIndex = nonKingMoves[Math.floor(Math.random() * nonKingMoves.length)];
+        else*/
+            moveIndex = Math.floor(Math.random() * goodMoves.length);
+    }
     
-   /* if(goodMoves[moveIndex].move.charAt(0) === 'K' && goodMoves[moveIndex].move !===)
-    {
-        moveIndex = goodMoves.length -1;
-    }*/
     
     return goodMoves[moveIndex];  
 }

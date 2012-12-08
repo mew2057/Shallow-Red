@@ -36,6 +36,31 @@ Board.test = function()
 {
     var w = new ChessNode();
     var b = new ChessNode();
+    Board.showState(w);
+    
+
+/*
+    ChessNode.processIncoming("Pa2a3", w);
+        Board.showState(w);
+        
+            ChessNode.processIncoming("Pd7d5", w);
+        Board.showState(w);
+
+    ChessNode.processIncoming("Pa3a4", w);
+        Board.showState(w);
+
+    ChessNode.processIncoming("Pd5d4", w);
+        Board.showState(w);
+//
+    ChessNode.processIncoming("Pc2c4", w);
+       Board.showState(w);
+       //ChessNode.processIncoming("Pd4c3",w);
+       w = ChessNode.movePawn(w, 3, 3, true)[0]; 
+       Board.showState(w);
+
+return w;
+*/
+
     var color = 0;
     // This is just me testing out your test to check that my move generation works.
     for(var limit = 100; limit > 0; limit --)
@@ -54,7 +79,8 @@ Board.test = function()
 
         if(Math.abs(ChessNode.utility(w, color)) > 400) 
             break;
-            
+                    console.log(b, w);
+
         b = negaSearch(b, color,3);
         
         if(b === null)
@@ -73,6 +99,7 @@ Board.test = function()
             
     }
     return [b, w];
+    
     /*
     var a = ChessNode.moveKnight(c, 0, 1);
     c = a[0];
